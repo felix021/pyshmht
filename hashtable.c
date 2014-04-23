@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -278,29 +279,41 @@ int main() {
     free(iter);
     printf("ht_get_iterator test ok\n");
 
-    char x[32];
+    char x[128];
     int i, len;
+    struct timeval begin, end;
+#define ts(tv) (tv.tv_sec + tv.tv_usec / 1000000.0)
+
+    gettimeofday(&begin, NULL);
     for (i = 0; i < (int)capacity; i++) {
-        len = sprintf(x, "%d", i);
+        len = sprintf(x, "%064d", i);
         if (ht_set(ht, x, len, x, len) == 0) {
             printf("set wrong @ %d\n", i);
             return 1;
         }
+    }
+    gettimeofday(&end, NULL);
+    printf("set test: %.0lf iops\n", capacity / (ts(end) - ts(begin)));
+
+    gettimeofday(&begin, NULL);
+    for (i = 0; i < (int)capacity; i++) {
+        len = sprintf(x, "%064d", i);
         ht_str* val = ht_get(ht, x, len);
         if (val == NULL || !is_equal(x, len, val->str, val->size)) {
             printf("(after set)get wrong @ %d\n", i);
             return 1;
         }
     }
-    printf("set/get test ok\n");
+    gettimeofday(&end, NULL);
+    printf("get test: %.0lf iops\n", capacity / (ts(end) - ts(begin)));
 
     for (i = 0; i < (int)capacity; i += 2) {
-        len = sprintf(x, "%d", i);
+        len = sprintf(x, "%064d", i);
         if (ht_remove(ht, x, len) == 0) {
             printf("remove wrong @ %d\n", i);
             return 1;
         }
-        len = sprintf(x, "%d", i + 1);
+        len = sprintf(x, "%064d", i + 1);
         ht_str* val = ht_get(ht, x, len);
         if (val == NULL || !is_equal(x, len, val->str, val->size)) {
             printf("(after remove)get wrong @ %d\n", i);
