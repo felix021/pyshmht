@@ -25,7 +25,7 @@ capacity=200M, 64 bytes key/value tests, tested on (Xeon E5-2670 0 @ 2.60GHz, 12
 Notice
 ======
 
-    In hashtable.c, default max key length is `256 - 4`, max value length is `1024 - 4`; you can change `bucket_size` and `max_key_size` manually, but bear in mind that increasing these two arguments will result in larger memory consumption.
+In hashtable.c, default max key length is `256 - 4`, max value length is `1024 - 4`; you can change `bucket_size` and `max_key_size` manually, but bear in mind that increasing these two arguments will result in larger memory consumption.
 
 If you find any bugs, please submit an issue or send me a pull request, I'll see to it ASAP :)
 
