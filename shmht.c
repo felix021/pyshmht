@@ -1,3 +1,5 @@
+#define _LARGEFILE64_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,7 +59,6 @@ static PyObject * shmht_open(PyObject *self, PyObject *args)
 {
     int fd = 0;
     size_t mem_size = 0;
-    void *base_addr = NULL;
     hashtable *ht = NULL;
 
     const char *name;
@@ -80,22 +81,28 @@ static PyObject * shmht_open(PyObject *self, PyObject *args)
     if (force_init == 0) { //try to load from existing shmht
         mem_size = sizeof(hashtable);
         if (buf.st_size >= sizeof(hashtable)) { //may be valid
-            base_addr = mmap(NULL, sizeof(hashtable), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-            if (base_addr == MAP_FAILED) {
+            ht = mmap(NULL, sizeof(hashtable), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+            if (ht == MAP_FAILED) {
                 PyErr_Format(shmht_error, "mmap failed, map_size=sizeof(hashtable)=%lu: [%d] %s",
                                             mem_size, errno, strerror(errno));
                 goto create_failed;
             }
 
-            if (ht_is_valid((hashtable *)base_addr)) {
-                ht = (hashtable *)base_addr;
+            if (ht_is_valid(ht)) {
                 if (capacity != 0 && capacity != ht->orig_capacity) {
                     PyErr_Format(shmht_error, "please specify the 3rd arg(force_init=1) to overwrite an existing shmht");
                     goto create_failed;
                 }
                 capacity = ht->orig_capacity; //loaded capacity
             }
+            munmap(ht, sizeof(hashtable));
+            ht = NULL;
         }
+    }
+
+    if (capacity == 0) {
+        PyErr_Format(shmht_error, "please specify 'capacity' when you try to create a shmht");
+        goto create_failed;
     }
 
     mem_size = ht_memory_size(capacity);
@@ -112,29 +119,14 @@ static PyObject * shmht_open(PyObject *self, PyObject *args)
         }
     }
 
-    if (base_addr == NULL) {
-        if (capacity == 0) {
-            PyErr_Format(shmht_error, "please specify 'capacity' when you try to create a shmht");
-            goto create_failed;
-        }
-        base_addr = mmap(NULL, mem_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-        if (base_addr == MAP_FAILED) {
-            PyErr_Format(shmht_error, "mmap failed, mem_size=%lu: [%d] %s",
-                                        mem_size, errno, strerror(errno));
-            goto create_failed;
-        }
-    }
-    else {
-        void *new_base_addr = mremap(base_addr, sizeof(hashtable), mem_size, MREMAP_MAYMOVE);
-        if (new_base_addr == MAP_FAILED) {
-            PyErr_Format(shmht_error, "mremap failed, mem_size=%lu: [%d] %s",
-                                        mem_size, errno, strerror(errno));
-            goto create_failed;
-        }
-        base_addr = new_base_addr;
+    ht = mmap(NULL, mem_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    if (ht == MAP_FAILED) {
+        PyErr_Format(shmht_error, "mmap failed, mem_size=%lu: [%d] %s",
+                                    mem_size, errno, strerror(errno));
+        goto create_failed;
     }
 
-    ht = ht_init(base_addr, capacity, force_init);
+    ht_init(ht, capacity, force_init);
     int count;
     for (count = 0; count < max_ht_map_entries; count++)
     {
@@ -156,8 +148,8 @@ static PyObject * shmht_open(PyObject *self, PyObject *args)
 create_failed:
     if (fd >= 0)
         close(fd);
-    if (base_addr != NULL)
-        munmap(base_addr, mem_size);
+    if (ht != NULL)
+        munmap(ht, mem_size);
     return NULL;
 }
 

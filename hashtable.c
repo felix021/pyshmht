@@ -50,15 +50,6 @@ static inline void fill_ht_str(ht_str *s, const char *str, const u_int32 size) {
     memcpy(s->str, str, size);
 }
 
-static void dump_ht_str(ht_str *s) {
-    if (s) {
-        printf("%u: %*s\n", s->size, (int)s->size, s->str);
-    }
-    else {
-        printf("(nil)\n");
-    }
-}
-
 static unsigned int ht_get_prime_by(size_t capacity) {
     unsigned i = 0;
     capacity *= 2;
@@ -241,6 +232,17 @@ int ht_destroy(hashtable *ht) {
 }
 
 /*
+
+//commented out together with 'main' to eliminate compiler's complaint
+static void dump_ht_str(ht_str *s) {
+    if (s) {
+        printf("%u: %*s\n", s->size, (int)s->size, s->str);
+    }
+    else {
+        printf("(nil)\n");
+    }
+}
+
 int main() {
     size_t capacity = 500000;
     printf("%u\n", ht_get_prime_by(capacity));

@@ -11,16 +11,16 @@ Performance
 capacity=200M, 64 bytes key/value tests, tested on (Xeon E5-2670 0 @ 2.60GHz, 128GB ram)
 
 * hashtable.c (raw hash table in c, tested on `malloc`ed memory)
-    set: 0.93 Million iops
-    get: 2.35 Million iops
+> set: 0.93 Million iops
+> get: 2.35 Million iops
 
 * HashTable.py (simple wrapper)
-    set: 250k iops
-    get: 145k iops
+> set: 250k iops
+> get: 145k iops
 
 * Cacher.py (cached wrapper, with serialized)
-    set: 180k iops (write_through), 83k iops (writ_back)
-    get: 135k iops (write_through), 73k iops (writ_back)
+> set: 180k iops (write\_through), 83k iops (writ\_back)
+> get: 135k iops (write\_through), 73k iops (writ\_back)
 
 Notice
 ======
