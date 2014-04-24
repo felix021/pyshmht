@@ -10,7 +10,7 @@ shmht = Extension('shmht',
 
 setup(
     name            = 'pyshmht',
-    version         = '0.0.1',
+    version         = '0.0.2',
     author          = 'felix021',
     author_email    = 'felix021@gmail.com',
     description     = 'provide sharing memory based hash table for python',

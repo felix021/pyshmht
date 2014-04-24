@@ -8,9 +8,8 @@ _debug = False
 
 class Cacher(object):
     """
-    Cacher: wrap HashTable with serializer and write_through/write_back mechanism
-        if you intend to modify the cache, initialize Cacher with `write_through=True`,
-        [OR] call write_back() before the program exits
+    Cacher: wrap HashTable with serializer and write_back mechanism
+        if you intend to modify the cache, call write_back() before the program exits
 
         notice:
             Cacher tries to simulate dict in most cases, mainly except for:
@@ -19,26 +18,18 @@ class Cacher(object):
                 (c) no comparation with other 'dict's
             When necessary, you can use .to_dict() to get a real dict object.
     """
-    def __init__(self, name, capacity=0, force_init=False, serializer=marshal, write_through=False):
+    def __init__(self, name, capacity=0, force_init=False, serializer=marshal):
         """
         'name'          the path of the file to be 'mmap'ed
                         use MemCacher(name, ...) to add prefix '/dev/shm' automatically
         'capacity'      optional, if you want to connect to an existing shmht
         'serializer'    should contain loads/dumps (marshal, json, pickle, etc.)
-        'write_through' True means that every write goes back to shmht immediately
         """
 
         self.ht = HashTable.HashTable(name, capacity, force_init, serializer)
         self.d = {}
         self.loads = serializer.loads
         self.dumps = serializer.dumps
-
-        self.write_through = write_through
-        if write_through:
-            self.__setitem = self.__setitem_write_through
-        else:
-            self.__setitem = self.__setitem_simple
-            self.need_write_back = False
 
     def __getitem__(self, key):
         d = self.d
@@ -50,15 +41,7 @@ class Cacher(object):
         return val
 
     def __setitem__(self, key, val):
-        self.__setitem(key, val)
-
-    def __setitem_simple(self, key, val):
         self.d[key] = val
-        self.need_write_back = True
-
-    def __setitem_write_through(self, key, val):
-        self.d[key] = val
-        self.ht.setobj(key, val)
 
     def __delitem__(self, key):
         if key in self.d:
@@ -81,25 +64,17 @@ class Cacher(object):
 
     def update(self, dic):
         self.d.update(dic)
-        if self.write_through:
-            self.ht.update(dic, serialize=True)
-        else:
-            self.need_write_back = True
 
     def foreach(self, callback):
-        if not self.write_through:
-            self.write_back()
+        self.write_back()
         return self.ht.foreach(callback, unserialize=True)
 
     def to_dict(self):
-        if not self.write_through:
-            self.write_back()
+        self.write_back()
         return self.ht.to_dict(unserialize=True)
 
     def write_back(self):
-        if self.need_write_back:
-            self.ht.update(self.d, serialize=True)
-            self.need_write_back = False
+        self.ht.update(self.d, serialize=True)
 
     def close(self):
         if self.d:
@@ -118,13 +93,13 @@ class Cacher(object):
         """
         self.close()
 
-def MemCacher(name, capacity=0, force_init=False, serializer=marshal, write_through=False):
+def MemCacher(name, capacity=0, force_init=False, serializer=marshal):
     """
     Add an prefix '/dev/shm/' to `name`, so that the file is saved only in memory
     For more information, see `help(Cacher)`
     """
     name = '/dev/shm/' + name
-    return Cacher(name, capacity, force_init, serializer, write_through)
+    return Cacher(name, capacity, force_init, serializer)
 
 if __name__ == "__main__":
     #test cases
@@ -191,7 +166,7 @@ if __name__ == "__main__":
         print True
 
     #write_back
-    ht = MemCacher('test.Cacher', 1024, True, write_through=False)
+    ht = MemCacher('test.Cacher', 1024, True)
     print 'fd:', ht.ht.fd
     ht['a'] = 1
     ht.write_back()
@@ -200,8 +175,7 @@ if __name__ == "__main__":
     _debug = True
     ht.close() #write_back() is called in close() when not debugging
 
-    #write_through
-    ht = MemCacher('test.Cacher', 1024, False, write_through=True)
+    ht = MemCacher('test.Cacher', 1024, False)
     print 'fd:', ht.ht.fd
     print ht['a'] == 1
     try:
@@ -209,53 +183,40 @@ if __name__ == "__main__":
         print False
     except:
         print True
-    ht['a'] = 3
-    ht['b'] = 4
-    ht.close()
-
-    ht = MemCacher('test.Cacher', 1024, False, write_through=True)
-    print ht['b'] == 4
     ht.close()
 
     #simple performance test
     import time
 
-    capacity = 500000
+    capacity = 300000
 
-    #write_through
-    ht = MemCacher('test.Cacher', capacity, True, write_through=True)
-
+    ht = MemCacher('test.Cacher', capacity, force_init=True)
     begin_time = time.time()
     for i in range(capacity):
         s = '%064d' % i
         ht[s] = s
     end_time = time.time()
-    print capacity / (end_time - begin_time), 'iops @ set/write_through'
+    print capacity / (end_time - begin_time), 'iops @ set / no write_back '
 
-    begin_timend_time = time.time()
-    for i in range(capacity):
-        s = '%064d' % i
-        ht[s]
-    end_time = time.time()
-    print capacity / (end_time - begin_time), 'iops @ get/write_through'
-
-    ht.close()
-
-    #write_back
-    ht = MemCacher('test.Cacher', capacity, True, write_through=False)
-    begin_timend_time = time.time()
-    for i in range(capacity):
-        s = '%064d' % i
-        ht[s] = s
     ht.write_back()
     end_time = time.time()
-    print capacity / (end_time - begin_time), 'iops @ set/write_back'
+    print capacity / (end_time - begin_time), 'iops @ set / after write_back '
 
-    begin_timend_time = time.time()
+    ht.d = {}
+    begin_time = time.time()
     for i in range(capacity):
         s = '%064d' % i
-        ht[s]
+        if s != ht[s]:
+            raise Exception(s)
     end_time = time.time()
-    print capacity / (end_time - begin_time), 'iops @ get/write_back'
+    print capacity / (end_time - begin_time), 'iops @ get / no cache '
+
+    begin_time = time.time()
+    for i in range(capacity):
+        s = '%064d' % i
+        if s != ht[s]:
+            raise Exception(s)
+    end_time = time.time()
+    print capacity / (end_time - begin_time), 'iops @ get / all cached '
 
     ht.close()

@@ -151,7 +151,7 @@ if __name__ == "__main__":
     #simple performance test
     import time
 
-    capacity = 500000
+    capacity = 300000
 
     #write_through
     ht = HashTable('/dev/shm/test.HashTable', capacity, True)
@@ -159,18 +159,15 @@ if __name__ == "__main__":
     begin_time = time.time()
     for i in range(capacity):
         s = '%064d' % i
-        ht[s] = dumps(s)
+        ht[s] = s
     end_time = time.time()
     print capacity / (end_time - begin_time), 'iops @ set'
 
     begin_timend_time = time.time()
     for i in range(capacity):
         s = '%064d' % i
-        try:
-            loads(ht.get(s))
-        except:
-            print i
-            raise
+        if s != ht[s]:
+            raise Exception(s)
     end_time = time.time()
     print capacity / (end_time - begin_time), 'iops @ get'
 
