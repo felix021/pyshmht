@@ -1,0 +1,4 @@
+include *.h
+include setup.py
+include README.md
+include LICENSE
