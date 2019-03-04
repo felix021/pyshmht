@@ -3,6 +3,8 @@ pyshmht
 
 **Sharing memory based** Hash Table extension for Python
 
+**BE CAREFUL**: this package is not for general purpose usage, it only accepts key < `max_key_size` and values < `max_value_size`. And although it's sharing memory based, it DO NOT use locks to avoid concurrency problem. It was designed for a former project, which had a write process, and many read process after the writer finished.
+
 For examples, see test cases in python files (pyshmht/Cacher.py, pyshmht/HashTable.py), where you can find performance tests as well.
 
 Performance
