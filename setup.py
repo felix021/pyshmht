@@ -18,5 +18,6 @@ setup(
     keywords        = "python extension sharing memory based hash table",
     url             = "http://github.com/felix021/pyshmht",
     ext_modules     = [shmht],
-    packages        = ["pyshmht"]
+    packages        = ["pyshmht"],
+    classifiers     = ["Programming Language :: Python :: 2.7"],
 )
